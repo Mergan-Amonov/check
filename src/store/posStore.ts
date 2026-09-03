@@ -71,7 +71,7 @@ export const usePosStore = create<PosState>((set, get) => ({
   treatments: loadStoredCatalog(),
   cart: [],
   patientName: '',
-  doctorName: loadStoredSettings().doctorName || 'Dr. Akramov',
+  doctorName: loadStoredSettings().doctorName || 'Dr. Umarov',
 
   receipts: loadStoredReceipts(),
   settings: loadStoredSettings(),
@@ -216,10 +216,10 @@ export const usePosStore = create<PosState>((set, get) => ({
       receiptNo,
       dateStr: getCurrentDateStr(now),
       timeStr: getCurrentTimeStr(now),
-      doctorName: doctorName || settings.doctorName || 'Dr. Akramov',
+      doctorName: doctorName || settings.doctorName || 'Dr. Umarov',
       patientName: patientName.trim() || 'Mijoz',
       clinicName: settings.clinicName || 'DENTAL CLINIC',
-      clinicPhone: settings.phone || '+998 90 123 45 67',
+      clinicPhone: settings.phone || '+998 93 999 95 55',
       items: receiptItems,
       totalAmount,
       createdAt: Date.now()

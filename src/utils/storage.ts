@@ -67,8 +67,8 @@ export const DEFAULT_TREATMENTS: Treatment[] = [
 
 export const DEFAULT_SETTINGS: ClinicSettings = {
   clinicName: 'DENTAL CLINIC',
-  doctorName: 'Dr. Akramov',
-  phone: '+998 90 123 45 67',
+  doctorName: 'Dr. Umarov',
+  phone: '+998 93 999 95 55',
   address: 'Toshkent sh., Yunusobod t.',
   footerMessage: "Salomat bo'ling! :)",
   columnWidth: 32

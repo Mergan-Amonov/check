@@ -107,7 +107,7 @@ export function generateReceiptText(receipt: Receipt, settings?: ClinicSettings)
   // Header
   lines.push(doubleDivider);
   lines.push(centerText(receipt.clinicName || 'DENTAL CLINIC', width));
-  const subHeader = `${receipt.doctorName || 'Dr. Akramov'} | ${receipt.clinicPhone || '+998 90 123 45 67'}`;
+  const subHeader = `${receipt.doctorName || 'Dr. Umarov'} | ${receipt.clinicPhone || '+998 93 999 95 55'}`;
   lines.push(centerText(subHeader, width));
   lines.push(doubleDivider);
 
@@ -184,7 +184,7 @@ export function generateEscPosBytes(receipt: Receipt, settings?: ClinicSettings)
   addLine('='.repeat(width));
   addLine(centerText(receipt.clinicName || 'DENTAL CLINIC', width));
   addBytes(0x1B, 0x45, 0x00); // Bold OFF
-  addLine(centerText(`${receipt.doctorName || 'Dr. Akramov'} | ${receipt.clinicPhone || '+998 90 123 45 67'}`, width));
+  addLine(centerText(`${receipt.doctorName || 'Dr. Umarov'} | ${receipt.clinicPhone || '+998 93 999 95 55'}`, width));
   addLine('='.repeat(width));
 
   // 3. Date, Time & Patient (Left Aligned)

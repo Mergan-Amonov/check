@@ -62,7 +62,7 @@ export const PosCart: React.FC = () => {
             type="text"
             value={doctorName}
             onChange={(e) => setDoctorName(e.target.value)}
-            placeholder="Dr. Akramov"
+            placeholder="Dr. Umarov"
             className="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-sky-500"
           />
         </div>
