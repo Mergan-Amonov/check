@@ -67,12 +67,12 @@ export const Navbar: React.FC = () => {
             </button>
           </nav>
 
-          {/* Bluetooth Thermal Printer Status */}
-          <div className="flex items-center space-x-2 shrink-0">
+          {/* Bluetooth Thermal Printer Status — desktop only (mobile prints via Telegram instead) */}
+          <div className="hidden lg:flex items-center space-x-2 shrink-0">
             <button
               onClick={openBluetoothModal}
               title="Bluetooth printer sozlamalari"
-              className={`flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 ${
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 ${
                 printerState.connected
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
                   : btSupported
@@ -83,16 +83,12 @@ export const Navbar: React.FC = () => {
               {printerState.connected ? (
                 <>
                   <BluetoothConnected className="w-4 h-4 text-emerald-400 animate-pulse" />
-                  <span className="hidden md:inline font-mono">
-                    {connectedDeviceName || 'Printer ulangan'}
-                  </span>
-                  <span className="md:hidden">58mm</span>
+                  <span className="font-mono">{connectedDeviceName || 'Printer ulangan'}</span>
                 </>
               ) : (
                 <>
                   <Bluetooth className="w-4 h-4 text-slate-400" />
-                  <span className="hidden md:inline">Bluetooth Printer</span>
-                  <span className="md:hidden">BT</span>
+                  <span>Bluetooth Printer</span>
                 </>
               )}
             </button>

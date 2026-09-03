@@ -50,8 +50,8 @@ export const PosCatalog: React.FC = () => {
           </span>
         </div>
 
-        {/* Search Input */}
-        <div className="relative">
+        {/* Search Input — desktop only, category pills are enough on mobile */}
+        <div className="relative hidden lg:block">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"

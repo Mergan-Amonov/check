@@ -230,51 +230,64 @@ export const ReceiptPreviewModal: React.FC = () => {
 
         {/* Modal Footer Controls */}
         <div className="p-4 border-t border-slate-800 bg-slate-900 space-y-2">
-          {btSupported ? (
-            /* Primary Bluetooth Print Button (Android Chrome/Edge) */
-            <button
-              onClick={handleBluetoothPrint}
-              disabled={isPrinting}
-              className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-bold text-sm shadow-lg shadow-sky-600/30 transition duration-150 disabled:opacity-50"
-            >
-              {isPrinting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Bluetooth className="w-4 h-4" />
-              )}
-              <span>Bluetooth Orqali Chop Etish</span>
-            </button>
-          ) : (
-            <>
-              {/* Primary: send to Telegram (iOS: Web Bluetooth unsupported, keeps Camera Roll clean) */}
+          {/* Desktop: direct Bluetooth (already confirmed working) or Telegram/Share fallback */}
+          <div className="hidden lg:block space-y-2">
+            {btSupported ? (
               <button
-                onClick={handleSendToTelegram}
+                onClick={handleBluetoothPrint}
                 disabled={isPrinting}
                 className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-bold text-sm shadow-lg shadow-sky-600/30 transition duration-150 disabled:opacity-50"
               >
                 {isPrinting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <Bluetooth className="w-4 h-4" />
                 )}
-                <span>Telegramga Yuborish</span>
+                <span>Bluetooth Orqali Chop Etish</span>
               </button>
-              <p className="text-[11px] text-slate-500 text-center px-2 leading-relaxed">
-                iOS'da to'g'ridan-to'g'ri Bluetooth chop etish qo'llab-quvvatlanmaydi. Chek Telegram chatiga
-                yuboriladi (galereyaga saqlanmaydi) — u yerdan AiYin ilovasiga o'tkazing.
-              </p>
+            ) : (
+              <>
+                <button
+                  onClick={handleSendToTelegram}
+                  disabled={isPrinting}
+                  className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-bold text-sm shadow-lg shadow-sky-600/30 transition duration-150 disabled:opacity-50"
+                >
+                  {isPrinting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  <span>Telegramga Yuborish</span>
+                </button>
+                <p className="text-[11px] text-slate-500 text-center px-2 leading-relaxed">
+                  Bu brauzerda to'g'ridan-to'g'ri Bluetooth chop etish qo'llab-quvvatlanmaydi. Chek Telegram
+                  chatiga yuboriladi — u yerdan AiYin ilovasiga o'tkazing.
+                </p>
+                <button
+                  onClick={handleShareToApp}
+                  disabled={isPrinting}
+                  className="w-full flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Yoki Rasm Sifatida Saqlash</span>
+                </button>
+              </>
+            )}
+          </div>
 
-              {/* Fallback: save image directly (if Telegram isn't configured) */}
-              <button
-                onClick={handleShareToApp}
-                disabled={isPrinting}
-                className="w-full flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition"
-              >
-                <Share2 className="w-3.5 h-3.5 text-sky-400" />
-                <span>Yoki Rasm Sifatida Saqlash</span>
-              </button>
-            </>
-          )}
+          {/* Mobile: simplified — no Bluetooth setup, Telegram handles real printing */}
+          <button
+            onClick={handleSendToTelegram}
+            disabled={isPrinting}
+            className="lg:hidden w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-bold text-sm shadow-lg shadow-sky-600/30 transition duration-150 disabled:opacity-50"
+          >
+            {isPrinting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+            <span>Telegramga Yuborish</span>
+          </button>
 
           {/* Secondary Buttons Grid */}
           <div className="grid grid-cols-2 gap-2">
