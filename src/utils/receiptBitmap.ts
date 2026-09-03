@@ -21,9 +21,9 @@ export interface PrinterBitmap {
 
 /**
  * Draws the receipt text onto an offscreen canvas at the given pixel width,
- * auto-sizing a monospace font so the longest line fits. Shared by both the
- * 1bpp bitmap path (direct BLE printing) and the PNG export path (share to
- * the printer's own app).
+ * auto-sizing a bold monospace font so the longest line fits. Bold prints
+ * noticeably darker/crisper on thermal paper than regular weight. Shared by
+ * every export path (1bpp bitmap, PNG, PDF).
  */
 function renderReceiptCanvas(text: string, widthPx: number): HTMLCanvasElement {
   const lines = text.split('\n');
@@ -37,7 +37,7 @@ function renderReceiptCanvas(text: string, widthPx: number): HTMLCanvasElement {
   const longestLine = lines.reduce((a, b) => (b.length > a.length ? b : a), '');
 
   while (fontSize > 8) {
-    measureCtx.font = `${fontSize}px "Courier New", monospace`;
+    measureCtx.font = `bold ${fontSize}px "Courier New", monospace`;
     const width = measureCtx.measureText(longestLine || 'M').width;
     if (width <= usableWidth) break;
     fontSize -= 0.5;
@@ -56,9 +56,10 @@ function renderReceiptCanvas(text: string, widthPx: number): HTMLCanvasElement {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, widthPx, heightPx);
 
-  // Black monospace text
+  // Bold black monospace text — bolder strokes survive the 1bpp threshold
+  // (below) far better than regular weight, which prints thin/faint.
   ctx.fillStyle = '#000000';
-  ctx.font = `${fontSize}px "Courier New", monospace`;
+  ctx.font = `bold ${fontSize}px "Courier New", monospace`;
   ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
     ctx.fillText(line, marginX, marginY + i * lineHeight);
@@ -71,11 +72,27 @@ function renderReceiptCanvas(text: string, widthPx: number): HTMLCanvasElement {
  * Renders a block of monospace text (already formatted to N columns) into a
  * 1bpp bitmap sized for a thermal print head of the given pixel width
  * (384px is the standard head width for 58mm printers at ~203 DPI).
+ *
+ * Renders at 3x the target resolution first, then downsamples with the
+ * canvas's own high-quality image smoothing before thresholding to black/
+ * white. Thresholding anti-aliased text directly at native resolution
+ * produces jagged, broken-looking glyphs on the thermal printer; averaging
+ * several supersampled pixels per output pixel first gives much cleaner
+ * edges — this is what made the printer's own app look sharper than our
+ * earlier direct-threshold output.
  */
 export function renderTextToBitmap(text: string, widthPx: number = 384): PrinterBitmap {
-  const canvas = renderReceiptCanvas(text, widthPx);
-  const heightPx = canvas.height;
+  const supersample = 3;
+  const bigCanvas = renderReceiptCanvas(text, widthPx * supersample);
+  const heightPx = Math.round(bigCanvas.height / supersample);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = widthPx;
+  canvas.height = heightPx;
   const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bigCanvas, 0, 0, widthPx, heightPx);
 
   const imageData = ctx.getImageData(0, 0, widthPx, heightPx);
   const widthBytes = Math.ceil(widthPx / 8);
@@ -88,7 +105,7 @@ export function renderTextToBitmap(text: string, widthPx: number = 384): Printer
       const g = imageData.data[pixelIndex + 1];
       const b = imageData.data[pixelIndex + 2];
       const luminance = (r + g + b) / 3;
-      const isBlack = luminance < 128;
+      const isBlack = luminance < 140;
       if (isBlack) {
         const byteIndex = y * widthBytes + (x >> 3);
         const bitMask = 0x80 >> (x & 7);

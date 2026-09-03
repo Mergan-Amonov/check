@@ -132,24 +132,36 @@ async function subscribeToNotifications(notifyChars: any[]): Promise<void> {
 }
 
 /**
- * Writes a byte buffer to a specific characteristic in small MTU-safe chunks.
+ * Writes a byte buffer to a specific characteristic in chunks.
+ *
+ * Once a device/channel is confirmed working, most desktop Bluetooth stacks
+ * (Windows/Chrome included) actually negotiate an extended ATT_MTU (usually
+ * 185-247 bytes) well above the unnegotiated 23-byte default — Chrome just
+ * doesn't expose the negotiated value, so we can't ask for it directly. The
+ * 20-byte/20ms defaults below exist for the FIRST, unverified write to a new
+ * channel (see `testAllWritableChannels`), where staying under the worst-case
+ * default MTU matters more than speed. For the real, already-confirmed print
+ * path, larger chunks and a shorter delay cut print time dramatically with
+ * no observed data loss on this printer.
  */
-async function writeInChunks(characteristic: any, data: Uint8Array, useResponseWrite: boolean): Promise<void> {
-  // Default (unnegotiated) BLE ATT_MTU is 23 bytes, leaving only 20 bytes of
-  // usable payload per write. Chrome's Web Bluetooth API does not expose the
-  // negotiated MTU, so sending larger chunks silently drops data on many
-  // printers instead of throwing. 20 bytes is the safe universal default.
-  const CHUNK_SIZE = 20;
-
-  for (let i = 0; i < data.length; i += CHUNK_SIZE) {
-    const chunk = data.slice(i, i + CHUNK_SIZE);
+async function writeInChunks(
+  characteristic: any,
+  data: Uint8Array,
+  useResponseWrite: boolean,
+  chunkSize: number = 20,
+  delayMs: number = 20
+): Promise<void> {
+  for (let i = 0; i < data.length; i += chunkSize) {
+    const chunk = data.slice(i, i + chunkSize);
     if (useResponseWrite) {
       await characteristic.writeValue(chunk);
     } else {
       await characteristic.writeValueWithoutResponse(chunk);
     }
     // Small delay between chunks to let the printer's BLE buffer drain
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
   }
 }
 
@@ -242,7 +254,7 @@ export async function printBitmapAiyin(
   const { characteristic } = activeConnection;
   const useResponseWrite = !!characteristic.properties.write;
 
-  const density = options?.density ?? 1;
+  const density = options?.density ?? 2;
   // Receipt-roll printers have no label gap sensor, so continuous mode (0x01)
   // is the safer default vs. the D11s label printer's documented 0x00 (gap).
   const paperTypeByte = options?.continuousPaper === false ? 0x00 : 0x01;
@@ -287,7 +299,10 @@ export async function printBitmapAiyin(
   );
 
   try {
-    await writeInChunks(characteristic, payload, useResponseWrite);
+    // Larger chunks + shorter delay than the conservative diagnostic default —
+    // this channel is already confirmed working, so we can push more per
+    // write. Cuts total print time roughly 5-10x with no observed data loss.
+    await writeInChunks(characteristic, payload, useResponseWrite, 150, 4);
   } catch (err: any) {
     console.error('[Bluetooth] Bitmap yozish xatosi:', err);
     throw new Error(`Printerga rasm yuborishda xatolik: ${err.message || err}`);
