@@ -1,12 +1,16 @@
 /**
- * Renders formatted receipt text into a 1-bit-per-pixel raster bitmap.
+ * Renders formatted receipt text into a raster image, for two different
+ * consumers:
  *
- * Some cheap 58mm "thermal pocket printers" (e.g. AiYin B-series, D11s and
- * similar OEM clones sharing the same firmware family) do NOT implement a
- * text/ESC-POS command interpreter at all — they only accept raw raster
- * image data. To print readable text on these, the text must first be
- * rendered to a bitmap image using an offscreen canvas, then packed into
- * 1bpp rows (MSB-first, 1 = black) for transmission.
+ * 1. Direct Bluetooth printing (Android Chrome/Edge): some cheap 58mm
+ *    "thermal pocket printers" (e.g. AiYin B-series, D11s and similar OEM
+ *    clones sharing the same firmware family) do NOT implement a text/ESC-POS
+ *    command interpreter at all — they only accept raw 1bpp raster image
+ *    data. See `renderTextToBitmap`.
+ * 2. Handing the receipt off to the printer manufacturer's own mobile app as
+ *    a PNG (needed on iOS, where Web Bluetooth is not supported by any
+ *    browser — it's a platform-level restriction, not something fixable in
+ *    web code). See `renderTextToPngBlob`.
  */
 export interface PrinterBitmap {
   widthPx: number;
@@ -16,11 +20,12 @@ export interface PrinterBitmap {
 }
 
 /**
- * Renders a block of monospace text (already formatted to N columns) into a
- * 1bpp bitmap sized for a thermal print head of the given pixel width
- * (384px is the standard head width for 58mm printers at ~203 DPI).
+ * Draws the receipt text onto an offscreen canvas at the given pixel width,
+ * auto-sizing a monospace font so the longest line fits. Shared by both the
+ * 1bpp bitmap path (direct BLE printing) and the PNG export path (share to
+ * the printer's own app).
  */
-export function renderTextToBitmap(text: string, widthPx: number = 384): PrinterBitmap {
+function renderReceiptCanvas(text: string, widthPx: number): HTMLCanvasElement {
   const lines = text.split('\n');
   const marginX = 3;
   const usableWidth = widthPx - marginX * 2;
@@ -59,6 +64,19 @@ export function renderTextToBitmap(text: string, widthPx: number = 384): Printer
     ctx.fillText(line, marginX, marginY + i * lineHeight);
   });
 
+  return canvas;
+}
+
+/**
+ * Renders a block of monospace text (already formatted to N columns) into a
+ * 1bpp bitmap sized for a thermal print head of the given pixel width
+ * (384px is the standard head width for 58mm printers at ~203 DPI).
+ */
+export function renderTextToBitmap(text: string, widthPx: number = 384): PrinterBitmap {
+  const canvas = renderReceiptCanvas(text, widthPx);
+  const heightPx = canvas.height;
+  const ctx = canvas.getContext('2d')!;
+
   const imageData = ctx.getImageData(0, 0, widthPx, heightPx);
   const widthBytes = Math.ceil(widthPx / 8);
   const data = new Uint8Array(widthBytes * heightPx);
@@ -80,4 +98,27 @@ export function renderTextToBitmap(text: string, widthPx: number = 384): Printer
   }
 
   return { widthPx, widthBytes, heightPx, data };
+}
+
+/**
+ * Renders the receipt text into a PNG image blob, upscaled for legibility
+ * when viewed/printed through a third-party app (e.g. the printer
+ * manufacturer's own mobile app via the OS share sheet on iOS).
+ */
+export function renderTextToPngBlob(text: string, widthPx: number = 384, scale: number = 2): Promise<Blob> {
+  const baseCanvas = renderReceiptCanvas(text, widthPx);
+
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = baseCanvas.width * scale;
+  outCanvas.height = baseCanvas.height * scale;
+  const outCtx = outCanvas.getContext('2d')!;
+  outCtx.imageSmoothingEnabled = false;
+  outCtx.drawImage(baseCanvas, 0, 0, outCanvas.width, outCanvas.height);
+
+  return new Promise((resolve, reject) => {
+    outCanvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('PNG yaratib bo\'lmadi.'));
+    }, 'image/png');
+  });
 }

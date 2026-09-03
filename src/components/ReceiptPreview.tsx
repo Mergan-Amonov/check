@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { usePosStore } from '../store/posStore';
 import { generateReceiptText } from '../utils/escpos';
-import { renderTextToBitmap } from '../utils/receiptBitmap';
+import { renderTextToBitmap, renderTextToPngBlob } from '../utils/receiptBitmap';
+import { shareReceiptImage, openReceiptImageInNewTab, isWebShareFileSupported } from '../utils/shareReceipt';
 import {
   isWebBluetoothSupported,
   connectBluetoothPrinter,
@@ -15,8 +16,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
-  Share2,
-  Download
+  Share2
 } from 'lucide-react';
 
 export const ReceiptPreviewModal: React.FC = () => {
@@ -77,6 +77,47 @@ export const ReceiptPreviewModal: React.FC = () => {
       setErrorMsg(err.message || "Bluetooth orqali chop etishda xatolik yuz berdi.");
       setIsPrinting(false);
       setPrinterState({ connected: false, deviceName: null });
+    }
+  };
+
+  // Hand the receipt off to the printer manufacturer's own app (AiYin) via
+  // the OS share sheet — needed on iOS, where no browser supports Web
+  // Bluetooth at all (a platform restriction, not fixable in web code).
+  const handleShareToApp = async () => {
+    setIsPrinting(true);
+    setErrorMsg(null);
+    setPrintStatus("Chek rasm sifatida tayyorlanmoqda...");
+
+    try {
+      const pngBlob = await renderTextToPngBlob(receiptText);
+
+      if (isWebShareFileSupported()) {
+        setPrintStatus("Ulashish oynasi ochilmoqda...");
+        const result = await shareReceiptImage(pngBlob, `chek-${receipt.receiptNo}.png`);
+
+        if (result === 'shared') {
+          confirmReceiptSale(receipt);
+          setPrintStatus("Chek ulashildi! AiYin ilovasida oching va chop eting.");
+          setTimeout(() => {
+            setIsPrinting(false);
+            setPrintStatus(null);
+            clearCart();
+            closeReceiptModal();
+          }, 1500);
+        } else {
+          setIsPrinting(false);
+          setPrintStatus(null);
+        }
+      } else {
+        openReceiptImageInNewTab(pngBlob);
+        confirmReceiptSale(receipt);
+        setPrintStatus("Rasm yangi oynada ochildi — uni saqlab, AiYin ilovasida oching.");
+        setIsPrinting(false);
+      }
+    } catch (err: any) {
+      console.error('Share error:', err);
+      setErrorMsg(err.message || "Rasmni ulashishda xatolik yuz berdi.");
+      setIsPrinting(false);
     }
   };
 
@@ -145,23 +186,40 @@ export const ReceiptPreviewModal: React.FC = () => {
 
         {/* Modal Footer Controls */}
         <div className="p-4 border-t border-slate-800 bg-slate-900 space-y-2">
-          {/* Primary Bluetooth Print Button */}
-          <button
-            onClick={handleBluetoothPrint}
-            disabled={isPrinting}
-            className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-bold text-sm shadow-lg shadow-sky-600/30 transition duration-150 disabled:opacity-50"
-          >
-            {isPrinting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Bluetooth className="w-4 h-4" />
-            )}
-            <span>
-              {btSupported
-                ? 'Bluetooth (ESC/POS) Orqali Chop Etish'
-                : 'Bluetooth Printer (Brauzerda cheklangan)'}
-            </span>
-          </button>
+          {btSupported ? (
+            /* Primary Bluetooth Print Button (Android Chrome/Edge) */
+            <button
+              onClick={handleBluetoothPrint}
+              disabled={isPrinting}
+              className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-bold text-sm shadow-lg shadow-sky-600/30 transition duration-150 disabled:opacity-50"
+            >
+              {isPrinting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Bluetooth className="w-4 h-4" />
+              )}
+              <span>Bluetooth Orqali Chop Etish</span>
+            </button>
+          ) : (
+            <>
+              {/* Primary Share-to-App Button (iOS: Web Bluetooth unsupported) */}
+              <button
+                onClick={handleShareToApp}
+                disabled={isPrinting}
+                className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-bold text-sm shadow-lg shadow-sky-600/30 transition duration-150 disabled:opacity-50"
+              >
+                {isPrinting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Share2 className="w-4 h-4" />
+                )}
+                <span>AiYin Ilovasiga Yuborish</span>
+              </button>
+              <p className="text-[11px] text-slate-500 text-center px-2">
+                iOS'da to'g'ridan-to'g'ri Bluetooth chop etish qo'llab-quvvatlanmaydi. Rasm sifatida ulashing va AiYin ilovasida chop eting.
+              </p>
+            </>
+          )}
 
           {/* Secondary Buttons Grid */}
           <div className="grid grid-cols-2 gap-2">
