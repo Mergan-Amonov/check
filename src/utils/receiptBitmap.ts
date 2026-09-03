@@ -31,9 +31,13 @@ function renderReceiptCanvas(text: string, widthPx: number): HTMLCanvasElement {
   const usableWidth = widthPx - marginX * 2;
 
   // Pick the largest monospace font size whose longest line still fits.
+  // The starting point must scale with widthPx — a caller rendering at 3x
+  // supersampled resolution needs a search ceiling well above the ~20px
+  // that's correct at native 384px width, otherwise the search "hits the
+  // ceiling" immediately and returns a font 3x too small once downsampled.
   const measureCanvas = document.createElement('canvas');
   const measureCtx = measureCanvas.getContext('2d')!;
-  let fontSize = 32;
+  let fontSize = Math.floor(widthPx / 8);
   const longestLine = lines.reduce((a, b) => (b.length > a.length ? b : a), '');
 
   while (fontSize > 8) {
