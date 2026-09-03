@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { usePosStore } from '../store/posStore';
 import { generateReceiptText } from '../utils/escpos';
 import { renderTextToBitmap, renderTextToPngBlob } from '../utils/receiptBitmap';
+import { renderTextToPdfBlob } from '../utils/receiptPdf';
 import {
   shareReceiptImage,
   openReceiptImageInNewTab,
   isWebShareFileSupported,
-  sendReceiptToTelegram
+  sendReceiptFileToTelegram
 } from '../utils/shareReceipt';
 import {
   isWebBluetoothSupported,
@@ -131,16 +132,23 @@ export const ReceiptPreviewModal: React.FC = () => {
     }
   };
 
-  // Send the receipt to a Telegram chat instead — keeps the phone's own
-  // Camera Roll clean (the receipt lives in the chat, not Photos).
+  // Send the receipt to a Telegram chat as a PDF document — keeps the
+  // phone's own Camera Roll clean (the receipt lives in the chat, not
+  // Photos), and PDFs move to other apps more reliably than plain images.
   const handleSendToTelegram = async () => {
     setIsPrinting(true);
     setErrorMsg(null);
-    setPrintStatus("Chek Telegramga yuborilmoqda...");
+    setPrintStatus("Chek PDF sifatida tayyorlanmoqda...");
 
     try {
-      const pngBlob = await renderTextToPngBlob(receiptText);
-      await sendReceiptToTelegram(pngBlob, `Chek #${receipt.receiptNo} — ${receipt.patientName}`);
+      const pdfBlob = await renderTextToPdfBlob(receiptText);
+      setPrintStatus("Telegramga yuborilmoqda...");
+      await sendReceiptFileToTelegram(
+        pdfBlob,
+        `chek-${receipt.receiptNo}.pdf`,
+        `Chek #${receipt.receiptNo} — ${receipt.patientName}`,
+        'document'
+      );
 
       confirmReceiptSale(receipt);
       setPrintStatus("Telegramga yuborildi! U yerdan AiYin ilovasiga o'tkazing.");

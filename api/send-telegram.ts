@@ -1,5 +1,5 @@
 /**
- * Vercel serverless function: forwards a receipt image to a Telegram chat via
+ * Vercel serverless function: forwards a receipt file to a Telegram chat via
  * the Bot API. Exists so the Telegram bot token never reaches the browser —
  * it lives only as a server-side environment variable (TELEGRAM_BOT_TOKEN),
  * read here, never shipped in client JS.
@@ -23,21 +23,28 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { imageBase64, caption } = req.body || {};
-    if (!imageBase64 || typeof imageBase64 !== 'string') {
-      res.status(400).json({ error: 'imageBase64 talab qilinadi.' });
+    const { fileBase64, caption, fileType, fileName } = req.body || {};
+    if (!fileBase64 || typeof fileBase64 !== 'string') {
+      res.status(400).json({ error: 'fileBase64 talab qilinadi.' });
       return;
     }
 
-    const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
-    const imageBuffer = Buffer.from(base64Data, 'base64');
+    const type: 'photo' | 'document' = fileType === 'document' ? 'document' : 'photo';
+    const base64Data = fileBase64.includes(',') ? fileBase64.split(',')[1] : fileBase64;
+    const fileBuffer = Buffer.from(base64Data, 'base64');
+
+    const isDocument = type === 'document';
+    const mimeType = isDocument ? 'application/pdf' : 'image/png';
+    const defaultName = isDocument ? 'chek.pdf' : 'chek.png';
+    const telegramField = isDocument ? 'document' : 'photo';
+    const telegramMethod = isDocument ? 'sendDocument' : 'sendPhoto';
 
     const form = new FormData();
     form.append('chat_id', chatId);
     if (caption) form.append('caption', String(caption).slice(0, 1024));
-    form.append('photo', new Blob([imageBuffer], { type: 'image/png' }), 'chek.png');
+    form.append(telegramField, new Blob([fileBuffer], { type: mimeType }), fileName || defaultName);
 
-    const telegramRes = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+    const telegramRes = await fetch(`https://api.telegram.org/bot${botToken}/${telegramMethod}`, {
       method: 'POST',
       body: form
     });

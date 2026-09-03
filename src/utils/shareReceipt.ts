@@ -64,18 +64,24 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
- * Sends the receipt PNG to a Telegram chat via the app's own serverless
- * proxy (`/api/send-telegram`), which holds the bot token server-side.
- * Avoids filling the phone's Camera Roll: the receipt lives in the Telegram
- * chat instead of Photos, and can be forwarded from there as needed.
+ * Sends a receipt file (PNG image or PDF document) to a Telegram chat via
+ * the app's own serverless proxy (`/api/send-telegram`), which holds the bot
+ * token server-side. Avoids filling the phone's Camera Roll: the receipt
+ * lives in the Telegram chat instead of Photos, and can be forwarded from
+ * there as needed.
  */
-export async function sendReceiptToTelegram(pngBlob: Blob, caption: string): Promise<void> {
-  const imageBase64 = await blobToBase64(pngBlob);
+export async function sendReceiptFileToTelegram(
+  fileBlob: Blob,
+  fileName: string,
+  caption: string,
+  fileType: 'photo' | 'document' = 'photo'
+): Promise<void> {
+  const fileBase64 = await blobToBase64(fileBlob);
 
   const res = await fetch('/api/send-telegram', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageBase64, caption })
+    body: JSON.stringify({ fileBase64, caption, fileType, fileName })
   });
 
   if (!res.ok) {

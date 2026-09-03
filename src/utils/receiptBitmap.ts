@@ -101,11 +101,11 @@ export function renderTextToBitmap(text: string, widthPx: number = 384): Printer
 }
 
 /**
- * Renders the receipt text into a PNG image blob, upscaled for legibility
- * when viewed/printed through a third-party app (e.g. the printer
- * manufacturer's own mobile app via the OS share sheet on iOS).
+ * Renders the receipt onto an upscaled canvas for legibility when viewed
+ * through a third-party app or embedded in a PDF (nearest-neighbor scaling
+ * keeps the monospace text crisp instead of blurry).
  */
-export function renderTextToPngBlob(text: string, widthPx: number = 384, scale: number = 2): Promise<Blob> {
+export function renderReceiptCanvasScaled(text: string, widthPx: number = 384, scale: number = 2): HTMLCanvasElement {
   const baseCanvas = renderReceiptCanvas(text, widthPx);
 
   const outCanvas = document.createElement('canvas');
@@ -114,6 +114,17 @@ export function renderTextToPngBlob(text: string, widthPx: number = 384, scale: 
   const outCtx = outCanvas.getContext('2d')!;
   outCtx.imageSmoothingEnabled = false;
   outCtx.drawImage(baseCanvas, 0, 0, outCanvas.width, outCanvas.height);
+
+  return outCanvas;
+}
+
+/**
+ * Renders the receipt text into a PNG image blob, upscaled for legibility
+ * when viewed/printed through a third-party app (e.g. the printer
+ * manufacturer's own mobile app via the OS share sheet on iOS).
+ */
+export function renderTextToPngBlob(text: string, widthPx: number = 384, scale: number = 2): Promise<Blob> {
+  const outCanvas = renderReceiptCanvasScaled(text, widthPx, scale);
 
   return new Promise((resolve, reject) => {
     outCanvas.toBlob((blob) => {
