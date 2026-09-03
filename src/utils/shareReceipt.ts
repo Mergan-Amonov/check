@@ -53,3 +53,33 @@ export function openReceiptImageInNewTab(pngBlob: Blob): void {
   // Revoke after a delay long enough for the new tab to load the image.
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Sends the receipt PNG to a Telegram chat via the app's own serverless
+ * proxy (`/api/send-telegram`), which holds the bot token server-side.
+ * Avoids filling the phone's Camera Roll: the receipt lives in the Telegram
+ * chat instead of Photos, and can be forwarded from there as needed.
+ */
+export async function sendReceiptToTelegram(pngBlob: Blob, caption: string): Promise<void> {
+  const imageBase64 = await blobToBase64(pngBlob);
+
+  const res = await fetch('/api/send-telegram', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageBase64, caption })
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Telegramga yuborishda xatolik yuz berdi.");
+  }
+}

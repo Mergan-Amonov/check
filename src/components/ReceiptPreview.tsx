@@ -2,7 +2,12 @@ import React, { useState } from 'react';
 import { usePosStore } from '../store/posStore';
 import { generateReceiptText } from '../utils/escpos';
 import { renderTextToBitmap, renderTextToPngBlob } from '../utils/receiptBitmap';
-import { shareReceiptImage, openReceiptImageInNewTab, isWebShareFileSupported } from '../utils/shareReceipt';
+import {
+  shareReceiptImage,
+  openReceiptImageInNewTab,
+  isWebShareFileSupported,
+  sendReceiptToTelegram
+} from '../utils/shareReceipt';
 import {
   isWebBluetoothSupported,
   connectBluetoothPrinter,
@@ -16,7 +21,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
-  Share2
+  Share2,
+  Send
 } from 'lucide-react';
 
 export const ReceiptPreviewModal: React.FC = () => {
@@ -125,6 +131,32 @@ export const ReceiptPreviewModal: React.FC = () => {
     }
   };
 
+  // Send the receipt to a Telegram chat instead — keeps the phone's own
+  // Camera Roll clean (the receipt lives in the chat, not Photos).
+  const handleSendToTelegram = async () => {
+    setIsPrinting(true);
+    setErrorMsg(null);
+    setPrintStatus("Chek Telegramga yuborilmoqda...");
+
+    try {
+      const pngBlob = await renderTextToPngBlob(receiptText);
+      await sendReceiptToTelegram(pngBlob, `Chek #${receipt.receiptNo} — ${receipt.patientName}`);
+
+      confirmReceiptSale(receipt);
+      setPrintStatus("Telegramga yuborildi! U yerdan AiYin ilovasiga o'tkazing.");
+      setTimeout(() => {
+        setIsPrinting(false);
+        setPrintStatus(null);
+        clearCart();
+        closeReceiptModal();
+      }, 2000);
+    } catch (err: any) {
+      console.error('Telegram send error:', err);
+      setErrorMsg(err.message || "Telegramga yuborishda xatolik yuz berdi.");
+      setIsPrinting(false);
+    }
+  };
+
   // Print via Browser Window.print()
   const handleBrowserPrint = () => {
     confirmReceiptSale(receipt);
@@ -206,24 +238,33 @@ export const ReceiptPreviewModal: React.FC = () => {
             </button>
           ) : (
             <>
-              {/* Primary Share-to-App Button (iOS: Web Bluetooth unsupported) */}
+              {/* Primary: send to Telegram (iOS: Web Bluetooth unsupported, keeps Camera Roll clean) */}
               <button
-                onClick={handleShareToApp}
+                onClick={handleSendToTelegram}
                 disabled={isPrinting}
                 className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 text-white font-bold text-sm shadow-lg shadow-sky-600/30 transition duration-150 disabled:opacity-50"
               >
                 {isPrinting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Share2 className="w-4 h-4" />
+                  <Send className="w-4 h-4" />
                 )}
-                <span>Chekni Rasm Sifatida Saqlash</span>
+                <span>Telegramga Yuborish</span>
               </button>
               <p className="text-[11px] text-slate-500 text-center px-2 leading-relaxed">
-                iOS'da to'g'ridan-to'g'ri Bluetooth chop etish qo'llab-quvvatlanmaydi. Ochilgan oynada{' '}
-                <strong className="text-slate-300">"Rasmni saqlash" (Save Image)</strong>ni tanlang — AiYin
-                belgichasini emas! Keyin AiYin ilovasini qo'lda oching va Galereyadan shu rasmni tanlab chop eting.
+                iOS'da to'g'ridan-to'g'ri Bluetooth chop etish qo'llab-quvvatlanmaydi. Chek Telegram chatiga
+                yuboriladi (galereyaga saqlanmaydi) — u yerdan AiYin ilovasiga o'tkazing.
               </p>
+
+              {/* Fallback: save image directly (if Telegram isn't configured) */}
+              <button
+                onClick={handleShareToApp}
+                disabled={isPrinting}
+                className="w-full flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition"
+              >
+                <Share2 className="w-3.5 h-3.5 text-sky-400" />
+                <span>Yoki Rasm Sifatida Saqlash</span>
+              </button>
             </>
           )}
 
