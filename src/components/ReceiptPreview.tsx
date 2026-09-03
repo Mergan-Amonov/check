@@ -80,9 +80,13 @@ export const ReceiptPreviewModal: React.FC = () => {
     }
   };
 
-  // Hand the receipt off to the printer manufacturer's own app (AiYin) via
-  // the OS share sheet — needed on iOS, where no browser supports Web
-  // Bluetooth at all (a platform restriction, not fixable in web code).
+  // Save the receipt as an image so it can be manually imported into the
+  // printer manufacturer's own app (AiYin) on iOS, where no browser supports
+  // Web Bluetooth at all (a platform restriction, not fixable in web code).
+  // Note: tapping the AiYin app icon directly in the OS share sheet does
+  // NOT work — that app has no share-receiving extension, so it just opens
+  // empty. "Rasmni saqlash" (Save Image) is the option that actually works,
+  // since it saves to Photos, from where AiYin's own editor can import it.
   const handleShareToApp = async () => {
     setIsPrinting(true);
     setErrorMsg(null);
@@ -92,18 +96,18 @@ export const ReceiptPreviewModal: React.FC = () => {
       const pngBlob = await renderTextToPngBlob(receiptText);
 
       if (isWebShareFileSupported()) {
-        setPrintStatus("Ulashish oynasi ochilmoqda...");
+        setPrintStatus("Ochilgan oynada \"Rasmni saqlash\" (Save Image)ni tanlang — AiYin belgichasini emas!");
         const result = await shareReceiptImage(pngBlob, `chek-${receipt.receiptNo}.png`);
 
         if (result === 'shared') {
           confirmReceiptSale(receipt);
-          setPrintStatus("Chek ulashildi! AiYin ilovasida oching va chop eting.");
+          setPrintStatus("Saqlandi! Endi AiYin ilovasini qo'lda oching va Galereyadan shu rasmni tanlab chop eting.");
           setTimeout(() => {
             setIsPrinting(false);
             setPrintStatus(null);
             clearCart();
             closeReceiptModal();
-          }, 1500);
+          }, 2500);
         } else {
           setIsPrinting(false);
           setPrintStatus(null);
@@ -111,12 +115,12 @@ export const ReceiptPreviewModal: React.FC = () => {
       } else {
         openReceiptImageInNewTab(pngBlob);
         confirmReceiptSale(receipt);
-        setPrintStatus("Rasm yangi oynada ochildi — uni saqlab, AiYin ilovasida oching.");
+        setPrintStatus("Rasm yangi oynada ochildi — uni uzoq bosib (long press) Galereyaga saqlang, so'ng AiYin ilovasida oching.");
         setIsPrinting(false);
       }
     } catch (err: any) {
       console.error('Share error:', err);
-      setErrorMsg(err.message || "Rasmni ulashishda xatolik yuz berdi.");
+      setErrorMsg(err.message || "Rasmni saqlashda xatolik yuz berdi.");
       setIsPrinting(false);
     }
   };
@@ -213,10 +217,12 @@ export const ReceiptPreviewModal: React.FC = () => {
                 ) : (
                   <Share2 className="w-4 h-4" />
                 )}
-                <span>AiYin Ilovasiga Yuborish</span>
+                <span>Chekni Rasm Sifatida Saqlash</span>
               </button>
-              <p className="text-[11px] text-slate-500 text-center px-2">
-                iOS'da to'g'ridan-to'g'ri Bluetooth chop etish qo'llab-quvvatlanmaydi. Rasm sifatida ulashing va AiYin ilovasida chop eting.
+              <p className="text-[11px] text-slate-500 text-center px-2 leading-relaxed">
+                iOS'da to'g'ridan-to'g'ri Bluetooth chop etish qo'llab-quvvatlanmaydi. Ochilgan oynada{' '}
+                <strong className="text-slate-300">"Rasmni saqlash" (Save Image)</strong>ni tanlang — AiYin
+                belgichasini emas! Keyin AiYin ilovasini qo'lda oching va Galereyadan shu rasmni tanlab chop eting.
               </p>
             </>
           )}
