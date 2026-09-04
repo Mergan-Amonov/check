@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { usePosStore } from './store/posStore';
 import { Navbar } from './components/Navbar';
 import { PosCatalog } from './components/PosCatalog';
@@ -9,7 +9,11 @@ import { BluetoothModal } from './components/BluetoothModal';
 import { PrintReceiptView } from './components/PrintReceiptView';
 
 export const App: React.FC = () => {
-  const { activeTab } = usePosStore();
+  const { activeTab, initCatalogSync } = usePosStore();
+
+  useEffect(() => {
+    initCatalogSync();
+  }, [initCatalogSync]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-sky-500 selection:text-white">

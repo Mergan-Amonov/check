@@ -16,6 +16,14 @@ import {
   saveReceiptToStorage,
   DEFAULT_TREATMENTS
 } from '../utils/storage';
+import {
+  subscribeToCatalog,
+  addTreatmentToCloud,
+  updateTreatmentInCloud,
+  deleteTreatmentFromCloud,
+  resetCatalogInCloud,
+  isFirebaseConfigured
+} from '../utils/catalogSync';
 import { getCurrentDateStr, getCurrentTimeStr } from '../utils/formatters';
 
 interface PosState {
@@ -46,6 +54,7 @@ interface PosState {
   setDoctorName: (name: string) => void;
 
   // Catalog Management Actions
+  initCatalogSync: () => void;
   addTreatment: (treatment: Omit<Treatment, 'id'>) => void;
   updateTreatment: (treatment: Treatment) => void;
   deleteTreatment: (id: string) => void;
@@ -150,9 +159,28 @@ export const usePosStore = create<PosState>((set, get) => ({
   },
 
   // --- Catalog Actions ---
+  initCatalogSync: () => {
+    if (!isFirebaseConfigured) return;
+    subscribeToCatalog(
+      (treatments) => {
+        saveCatalogToStorage(treatments);
+        set({ treatments });
+      },
+      (err) => console.error('Katalog sinxronizatsiyasida xatolik:', err)
+    );
+  },
+
   addTreatment: (newTreatmentData) => {
     const newId = `t-${Date.now()}`;
     const newTreatment: Treatment = { ...newTreatmentData, id: newId };
+
+    if (isFirebaseConfigured) {
+      addTreatmentToCloud(newTreatment).catch((e) =>
+        console.error('Muolaja qo\'shishda xatolik:', e)
+      );
+      return;
+    }
+
     set((state) => {
       const updated = [newTreatment, ...state.treatments];
       saveCatalogToStorage(updated);
@@ -161,6 +189,13 @@ export const usePosStore = create<PosState>((set, get) => ({
   },
 
   updateTreatment: (updatedTreatment) => {
+    if (isFirebaseConfigured) {
+      updateTreatmentInCloud(updatedTreatment).catch((e) =>
+        console.error('Muolajani yangilashda xatolik:', e)
+      );
+      return;
+    }
+
     set((state) => {
       const updated = state.treatments.map((t) =>
         t.id === updatedTreatment.id ? updatedTreatment : t
@@ -171,6 +206,13 @@ export const usePosStore = create<PosState>((set, get) => ({
   },
 
   deleteTreatment: (id) => {
+    if (isFirebaseConfigured) {
+      deleteTreatmentFromCloud(id).catch((e) =>
+        console.error('Muolajani o\'chirishda xatolik:', e)
+      );
+      return;
+    }
+
     set((state) => {
       const updated = state.treatments.filter((t) => t.id !== id);
       saveCatalogToStorage(updated);
@@ -179,6 +221,13 @@ export const usePosStore = create<PosState>((set, get) => ({
   },
 
   resetCatalogToDefault: () => {
+    if (isFirebaseConfigured) {
+      resetCatalogInCloud().catch((e) =>
+        console.error('Katalogni tiklashda xatolik:', e)
+      );
+      return;
+    }
+
     saveCatalogToStorage(DEFAULT_TREATMENTS);
     set({ treatments: DEFAULT_TREATMENTS });
   },
