@@ -145,6 +145,7 @@ export function generateReceiptText(receipt: Receipt, settings?: ClinicSettings)
   // Footer
   const footerMsg = settings?.footerMessage || 'Salomat bo\'ling! :)';
   lines.push(centerText(footerMsg, width));
+  lines.push(centerText('Bu check emas', width));
   lines.push(doubleDivider);
 
   return lines.join('\n');
@@ -225,6 +226,7 @@ export function generateEscPosBytes(receipt: Receipt, settings?: ClinicSettings)
   addBytes(0x1B, 0x61, 0x01); // Center align
   const footerMsg = settings?.footerMessage || 'Salomat bo\'ling! :)';
   addLine(centerText(footerMsg, width));
+  addLine(centerText('Bu check emas', width));
   addLine('='.repeat(width));
 
   // 8. Feed 3 lines & reset alignment

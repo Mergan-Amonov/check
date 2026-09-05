@@ -24,6 +24,7 @@ import {
   resetCatalogInCloud,
   isFirebaseConfigured
 } from '../utils/catalogSync';
+import { subscribeToSettings, updateSettingsInCloud } from '../utils/settingsSync';
 import { getCurrentDateStr, getCurrentTimeStr } from '../utils/formatters';
 
 interface PosState {
@@ -168,6 +169,13 @@ export const usePosStore = create<PosState>((set, get) => ({
       },
       (err) => console.error('Katalog sinxronizatsiyasida xatolik:', err)
     );
+    subscribeToSettings(
+      (settings) => {
+        saveSettingsToStorage(settings);
+        set({ settings });
+      },
+      (err) => console.error('Sozlamalar sinxronizatsiyasida xatolik:', err)
+    );
   },
 
   addTreatment: (newTreatmentData) => {
@@ -234,11 +242,15 @@ export const usePosStore = create<PosState>((set, get) => ({
 
   // --- Settings Actions ---
   updateSettings: (newSettings) => {
-    set((state) => {
-      const updated = { ...state.settings, ...newSettings };
-      saveSettingsToStorage(updated);
-      return { settings: updated };
-    });
+    const updated = { ...get().settings, ...newSettings };
+    saveSettingsToStorage(updated);
+    set({ settings: updated });
+
+    if (isFirebaseConfigured) {
+      updateSettingsInCloud(updated).catch((e) =>
+        console.error('Sozlamalarni bulutga saqlashda xatolik:', e)
+      );
+    }
   },
 
   setActiveTab: (tab) => set({ activeTab: tab }),
